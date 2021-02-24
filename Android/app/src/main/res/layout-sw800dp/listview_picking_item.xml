@@ -1,0 +1,99 @@
+<?xml version="1.0" encoding="utf-8"?>
+<com.pda.navimpda.CheckableRelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:navimpda="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@drawable/listview_color_selector"
+    android:orientation="horizontal"
+    navimpda:checkable="@+id/radio">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal">
+
+        <TextView
+            android:id="@+id/tx_i2_location_no"
+            style="@style/l_grid_field" />
+        <TextView
+            android:id="@+id/tx_i2_item_no"
+            style="@style/l_grid_field" />
+
+        <!-- Gone Textview start-->
+        <TextView
+            android:id="@+id/tx_i2_caution_flg"
+            style="@style/t_grid_field_40"
+            android:visibility="gone"/>
+        <TextView
+            android:id="@+id/tx_i2_unit_caution_flag"
+            style="@style/t_grid_field_40"
+            android:visibility="gone"/>
+        <TextView
+            android:id="@+id/tx_i2_catalog_flag"
+            style="@style/t_grid_field_40"
+            android:visibility="gone"/>
+        <TextView
+            android:id="@+id/tx_i2_flyer_flag"
+            style="@style/t_grid_field_40"
+            android:visibility="gone"/>
+        <TextView
+            android:id="@+id/tx_i2_stock_qty"
+            style="@style/t_grid_field_40"
+            android:visibility="gone"/>
+        <TextView
+            android:id="@+id/tx_i2_package_content"
+            style="@style/t_grid_field_40"
+            android:visibility="gone"/>
+        <TextView
+            android:id="@+id/tx_i2_product_name"
+            style="@style/t_grid_field"
+            android:layout_width="180dp"
+            android:layout_height="60dp"
+            android:textAlignment="center"
+            android:visibility="gone"/>
+        <TextView
+            android:id="@+id/tx_i2_qty"
+            style="@style/t_grid_field_40"
+            android:visibility="gone"/>
+        <TextView
+            android:id="@+id/tx_i2_i_qty"
+            style="@style/t_grid_field_40"
+            android:visibility="gone"/>
+        <TextView
+            android:id="@+id/tx_i2_order_cnt"
+            style="@style/t_grid_field_40"
+            android:visibility="gone"/>
+        <TextView
+            android:id="@+id/tx_i2_picking_status"
+            style="@style/t_grid_field_40"
+            android:visibility="gone"/>
+        <TextView
+            android:id="@+id/tx_i2_option_code"
+            style="@style/t_grid_field_40"
+            android:visibility="gone"/>
+        <TextView
+            android:id="@+id/tx_i2_memo"
+            style="@style/t_grid_field_40"
+            android:visibility="gone"/>
+        <TextView
+            android:id="@+id/tx_i2_image"
+            style="@style/t_grid_field_40"
+            android:visibility="gone"/>
+        <TextView
+            android:id="@+id/tx_i2_storage_type"
+            style="@style/t_grid_field_40"
+            android:visibility="gone"/>
+
+        <!-- Gone Textview End-->
+
+        <RadioButton
+            android:id="@+id/radio"
+            android:layout_width="60dp"
+            android:layout_height="60dp"
+            android:gravity="center_horizontal"
+            android:layout_marginRight="1dip"
+            android:clickable="false"
+            android:focusable="false" />
+    </LinearLayout>
+
+</com.pda.navimpda.CheckableRelativeLayout>

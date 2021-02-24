@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+  xmlns:jdbc="http://www.springframework.org/schema/jdbc"
+  xsi:schemaLocation="http://www.springframework.org/schema/beans
+					http://www.springframework.org/schema/beans/spring-beans-3.2.xsd
+					http://www.springframework.org/schema/jdbc 
+					http://www.springframework.org/schema/jdbc/spring-jdbc-3.2.xsd"
+>
+
+  <!-- mysql : navi mro test db -->
+    <bean id="dataSource" class="org.apache.commons.dbcp.BasicDataSource" depends-on="encryptGlobalProps" destroy-method="close">
+		<property name="driverClassName" value="com.mysql.jdbc.Driver"/>
+		<property name="url" value="${encrypt.db.jdbcUrlTest}?allowMultiQueries=true&amp;zeroDateTimeBehavior=convertToNull" />
+		<property name="username" value="${encrypt.db.user}" />
+		<property name="password" value="${encrypt.db.password}" />
+		<property name="defaultAutoCommit" value="false" />
+		<property name="validationQuery" value="SELECT 1 FROM DUAL"/>
+		<property name="testOnBorrow" value="false"/>
+		<property name="testOnReturn" value="false"/>
+		<property name="testWhileIdle" value="true"/>
+		<property name="timeBetweenEvictionRunsMillis" value="80000"/>
+		<property name="numTestsPerEvictionRun" value="5"/>
+		<property name="initialSize" value="5"/>
+		<property name="minIdle" value="5"/>
+		<property name="maxIdle" value="25"/>
+		<property name="maxActive" value="25"/>
+    </bean>
+</beans>

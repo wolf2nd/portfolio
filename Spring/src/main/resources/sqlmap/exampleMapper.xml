@@ -1,0 +1,172 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="wms.mapper.KpiMapper">
+	<resultMap type="wms.dto.KpiDTO" id="dailyOutMap">
+		<result column="INSERT_HOUR"			property="insertHour"/>
+		<result column="ORDER_CNT"			property="orderCnt"	/>
+		<result column="SKU_CNT"			property="skuCnt"/>
+		<result column="K1S1_CNT"			property="k1s1Cnt"/>
+		<result column="K1P1_CNT"			property="k1p1Cnt"/>
+		<result column="K1T1_CNT"			property="k1t1Cnt"/>
+		<result column="ORDER_QTY_SUM"		property="orderQtySum"/>
+		<result column="K1S1_QTY"			property="k1s1OrderQty"/>
+		<result column="DELV_CNT"			property="delvCnt"/>
+		<result column="BOX_TYPE_01"		    property="boxSize01"/>
+		<result column="BOX_TYPE_02"		    property="boxSize02"/>
+		<result column="BOX_TYPE_03"		    property="boxSize03"/>
+		<result column="BOX_TYPE_04"		    property="boxSize04"/>
+		<result column="PAPER_CNT"		    property="paperCnt"	/>
+    </resultMap>
+    
+	<select id="selectKpiDailyOutList" parameterType="wms.dto.OutProcParam" resultMap="dailyOutMap">
+      SET @PREV_NO := NULL;
+      SELECT IFNULL(L1.INSERT_HOUR,'[TOTAL]') AS INSERT_HOUR
+            ,COUNT(DISTINCT L1.DELIVERY_NO) AS ORDER_CNT
+            ,COUNT(DISTINCT CONCAT(L1.DELIVERY_NO,L1.item_no)) AS SKU_CNT
+		  ,COUNT(DISTINCT IF(L1.ISS ='K1S1',CONCAT(L1.DELIVERY_NO,L1.item_no,L1.ISS),NULL)) AS K1S1_CNT
+            ,COUNT(DISTINCT IF(L1.ISS IN ('K1P1','K1B1'),CONCAT(L1.DELIVERY_NO,L1.item_no,L1.ISS),NULL)) AS K1P1_CNT
+            ,COUNT(DISTINCT IF(L1.ISS = 'K1T1',CONCAT(L1.DELIVERY_NO,L1.item_no,L1.ISS),NULL)) AS K1T1_CNT
+            ,SUM(L1.order_qty) AS ORDER_QTY_SUM
+		  ,SUM(IF(L1.delivery_no != L1.LAG, IF(L1.ISS ='K1S1',L1.order_qty,0), 0)) AS K1S1_QTY
+            ,SUM(IF(L1.delivery_no != L1.LAG, L1.INVC_NO, 0)) AS DELV_CNT
+            ,SUM(IF(L1.delivery_no != L1.LAG, L1.BOX_TYPE_01, NULL)) AS BOX_TYPE_01
+    		  ,SUM(IF(L1.delivery_no != L1.LAG, L1.BOX_TYPE_02, NULL)) AS BOX_TYPE_02
+    		  ,SUM(IF(L1.delivery_no != L1.LAG, L1.BOX_TYPE_03, NULL)) AS BOX_TYPE_03
+    		  ,SUM(IF(L1.delivery_no != L1.LAG, L1.BOX_TYPE_04, NULL)) AS BOX_TYPE_04
+    		  ,SUM(IF(L1.delivery_no != L1.LAG, L1.PAPER_CNT, NULL)) AS PAPER_CNT
+	   FROM ( 
+		     SELECT P1.*
+                      <if test= 'parcelListCode == "1"'> 
+                        ,HOUR(P1.DELIVERY_DATE) AS INSERT_HOUR
+                      </if>
+                      <if test= 'parcelListCode != "1"'> 
+				    ,DATE_FORMAT(P1.DELIVERY_DATE, '%Y/%m/%d') AS INSERT_HOUR
+                      </if>
+				  ,(SELECT MAX(CEIL(gCnt/9)) AS gCnt
+				      FROM WMS_PICKING_LIST_TBL
+				     WHERE delivery_no = P1.DELIVERY_NO
+				  	AND delete_flag = 'N') AS PAPER_CNT
+				  ,IFNULL(@PREV_NO, 'X')	AS LAG
+				  ,@PREV_NO := P1.DELIVERY_NO AS LAG_FUNC
+			   FROM (	
+				    SELECT P1.SALES_ORDER_NO
+					     ,P1.ISS
+					     ,P1.ITEM_NO
+					     ,MAX(P1.ORDER_QTY) AS ORDER_QTY
+					     ,P1.DELIVERY_NO
+					     ,P1.delivery_detail_no AS DETAIL_NO
+					     ,COUNT(R1.INVC_NO) AS INVC_NO
+					     ,COUNT(IF(R1.BOX_TYPE_CD = '01',R1.BOX_TYPE_CD, NULL)) AS BOX_TYPE_01
+					     ,COUNT(IF(R1.BOX_TYPE_CD = '02',R1.BOX_TYPE_CD, NULL)) AS BOX_TYPE_02
+					     ,COUNT(IF(R1.BOX_TYPE_CD = '03',R1.BOX_TYPE_CD, NULL)) AS BOX_TYPE_03
+					     ,COUNT(IF(R1.BOX_TYPE_CD = '04',R1.BOX_TYPE_CD, NULL)) AS BOX_TYPE_04
+					     ,P1.DELIVERY_DATE
+					  FROM admin.delivery_master P1
+					  LEFT JOIN WMS_RCPT_NAVIMRO_TBL R1 ON R1.CUST_USE_NO = P1.DELIVERY_NO
+														AND R1.CANCEL_FLAG = '0'
+														AND R1.RCPT_DV = '01'
+					  WHERE 1 = 1
+                           <if test= 'parcelListCode == "1"'> 
+                            AND P1.DELIVERY_DATE BETWEEN DATE_FORMAT(CONCAT(#{startDate}, ' 00:00:00'), '%Y/%m/%d %H:%i:%s')  
+                                                     AND DATE_FORMAT(CONCAT(#{endDate}, ' 23:59:59'), '%Y/%m/%d %H:%i:%s') 
+                           </if>
+                           <if test= 'parcelListCode != "1"'> 
+                            AND P1.DELIVERY_DATE BETWEEN DATE_FORMAT(CONCAT(#{startDate}, ' 00:00:00'), '%Y/%m/%d %H:%i:%s')  
+                                                     AND DATE_FORMAT(CONCAT(LAST_DAY(#{startDate}), ' 23:59:59'), '%Y/%m/%d %H:%i:%s') 
+                           </if>
+					   AND P1.PICKING_PRINT_FLAG <> '9'
+					   AND P1.REAL_GI_DATE <> '00000000'
+					   AND P1.DETAIL_TYPE IN ('ZTN1'
+										 ,'ZTN2'
+										 ,'ZTN8'
+										 ,'ZTNA')
+    					GROUP BY P1.SALES_ORDER_NO
+								,P1.ISS
+								,P1.ITEM_NO
+								,P1.DELIVERY_NO
+								,P1.delivery_detail_no
+								,P1.DELIVERY_DATE
+					ORDER BY P1.DELIVERY_NO
+					) P1
+			ORDER BY P1.DELIVERY_NO
+			) L1
+       GROUP BY L1.INSERT_HOUR
+       WITH ROLLUP
+	</select>
+	
+	<insert id="insertLocationMst" parameterType="wms.dto.LocationMstDTO">
+	/* MasterMapper.insertLocationMst */
+	INSERT INTO WMS_LOCATION_MST(LOCATION_NO
+							   , LOC_KBN
+							   , LOC_SIZE_KBN
+							   , UOM
+							   , SIZE_WIDTH
+							   , SIZE_HIGH
+							   , SIZE_DEEP
+							   , LOC_STORE_VOLUME
+							   , LOC_STORE_MASS
+							   , LOC_KIND1
+							   , LOC_KIND2
+							   , LOC_BAY
+							   , LOC_USE_KBN
+							   , LOC_PRIORITY
+							   , LOC_ROUTE
+							   , CREATE_DATE
+							   , UPDATE_DATE)
+	VALUES(#{locationNo}
+		  , #{locKbn}
+		  , #{locSizeKbn}
+		  , #{uom}
+		  , #{sizeWidth}
+		  , #{sizeHigh}
+		  , #{sizeDeep}
+		  , #{sizeWidth} * #{sizeHigh} * #{sizeDeep}
+		  , #{locStoreMass}
+		  , #{locKind1}
+		  , #{locKind2}
+		  , #{locBay}
+		  , #{locUseKbn}
+		  , #{locPriority}
+		  , #{locRoute}
+		  , NOW()
+		  , NOW()
+		  )		
+	ON DUPLICATE KEY
+	UPDATE LOCATION_NO = rtrim(#{locationNo})
+		<if test="locKbn != null and locKbn != ''">
+		 , LOC_KBN = rtrim(#{locKbn})
+		</if>
+		<if test="locSizeKbn != null and locSizeKbn != ''">
+		 , LOC_SIZE_KBN = rtrim(#{locSizeKbn})
+		</if>
+		<if test="uom != null and uom != ''">
+		 , UOM = rtrim(#{uom})
+		</if>
+		<if test="sizeWidth != null and sizeWidth != ''">
+		 , SIZE_WIDTH = rtrim(#{sizeWidth})
+		</if>
+		<if test="sizeHigh != null and sizeHigh != ''">
+		 , SIZE_HIGH = rtrim(#{sizeHigh})
+		</if>
+		<if test="sizeDeep != null and sizeDeep != ''">
+		 , SIZE_DEEP = rtrim(#{sizeDeep})
+		</if>
+		<if test="sizeWidth != ''  and sizeHigh != '' and sizeDeep != ''">
+		 , LOC_STORE_VOLUME = rtrim(#{sizeWidth}) * rtrim(#{sizeHigh}) * rtrim(#{sizeDeep})
+		</if>
+		<if test="locStoreMass != null and locStoreMass != ''">
+		 , LOC_STORE_MASS = rtrim(#{locStoreMass})
+		</if>
+		<if test="locKind1 != null and locKind1 != ''">
+		 , LOC_KIND1 = rtrim(#{locKind1})
+		</if>
+		<if test="locKind2 != null and locKind2 != ''">
+		 , LOC_KIND2 = rtrim(#{locKind2})
+		</if>
+		<if test="locUseKbn != null and locUseKbn != ''">
+		 , LOC_USE_KBN = rtrim(#{locUseKbn})
+		</if>
+		 , UPDATE_DATE = NOW();
+	</insert>
+	
+</mapper>

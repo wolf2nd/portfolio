@@ -1,0 +1,92 @@
+pipeline {
+    agent any
+    
+    tools {
+        maven 'maven-3.3.9'
+        jdk 'openJDK8'
+    }
+    stages {
+        stage('Before build SQL') {
+            steps {
+                echo 'SQLPlusRunner running user define script before build'
+                step([$class: 'SQLPlusRunnerBuilder',credentialsId:'cbdd3c7c-f0ac-4203-ade3-5fef568b0ab5', 
+                    instance:'IP주소:DB포트/서비스명',scriptType:'userDefined', script: '',scriptContent: 
+                    '''
+                        UPDATE WEBSVC SET STATYN = 'N';
+                        COMMIT;
+                    '''])
+            }
+        }
+        stage('Checkout') {
+        steps {
+            echo 'Checkout from svn'
+            checkout([$class: 'SubversionSCM', 
+                additionalCredentials: [], 
+                excludedCommitMessages: '', 
+                excludedRegions: '', 
+                excludedRevprop: '', 
+                excludedUsers: '', 
+                filterChangelog: false, 
+                ignoreDirPropChanges: false, 
+                includedRegions: '', 
+                locations: [[cancelProcessOnExternalsFail: true, 
+                			credentialsId: 'b4d5c5f9-ec70-433e-b06a-32f043911e2b', 
+                			depthOption: 'infinity', 
+                			ignoreExternalsOption: true, 
+                			local: './nilis', 
+                			remote: 'svn://SVN 리포지터리 주소@${REV_NUM}']],
+                quietOperation: true, 
+                workspaceUpdater: [$class: 'UpdateUpdater']])
+            }
+        }
+        stage('Build') {
+        steps {
+            echo 'Maven Build...'
+            sh 'mvn -f ./nilis/pom.xml clean install'
+            }
+        }
+        stage('2nd server SSH transfer -> WAS restart') {
+            steps([$class: 'BapSshPromotionPublisherPlugin']) {
+                sshPublisher(
+                continueOnError: false, failOnError: true,
+                publishers: [
+                    sshPublisherDesc(
+                        configName: 'PROD_SSH_136',
+                        verbose: true,
+                        transfers: [
+                        sshTransfer(
+							sourceFiles: 'nilis/target/AIRWMS-1.0.0-SNAPSHOT.war',
+							removePrefix: 'nilis/target',
+							remoteDirectory: 'ROOT/',
+                            execCommand:'''
+                                        cd /u01/resin-pro-4.0.58/webapps/ROOT 
+                                        jar -uvf AIRWMS-1.0.0-SNAPSHOT.war WEB-INF/conf/spring/context/context-task.xml
+                                        cd /u01/resin-pro-4.0.58/bin
+                                        ./stop-wms4.sh
+										sleep 3
+										unzip -o /u01/resin-pro-4.0.58/webapps/ROOT/AIRWMS-1.0.0-SNAPSHOT.war -d /u01/resin-pro-4.0.58/webapps/ROOT
+										sleep 2
+										./start-wms4.sh
+										sleep 70
+										ps -ef | grep Dresin.server=wms4
+										rm -rf /u01/resin-pro-4.0.58/webapps/ROOT/AIRWMS-1.0.0-SNAPSHOT.war
+                                        ''',
+                            execTimeout: 1200000
+                        )
+                    ])
+                ])
+            }
+        }
+        stage('After build Sql') {
+            steps {
+                echo 'SQLPlusRunner running user define script after build'
+                step([$class: 'SQLPlusRunnerBuilder',credentialsId:'cbdd3c7c-f0ac-4203-ade3-5fef568b0ab5', 
+                    instance:'IP주소:DB포트/서비스명',scriptType:'userDefined', script: '',scriptContent: 
+                    '''
+                        UPDATE WEBSVC SET STATYN = 'Y' WHERE SEVRID != 'PII00422';
+                        COMMIT;
+                    '''])
+            }
+        }
+   }
+}
